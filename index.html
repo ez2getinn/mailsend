@@ -2,10 +2,38 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Mail Send</title>
+  <title>Send Email</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <h1>Mail Send Static Web App</h1>
-  <p>Deployment successful.</p>
+  <div class="container">
+    <h1>Send an Email</h1>
+    <p class="subtitle">Powered by Azure Communication Services</p>
+
+    <form id="emailForm">
+      <label>
+        Recipient Email
+        <input type="email" id="to" required />
+      </label>
+
+      <label>
+        Subject
+        <input type="text" id="subject" required />
+      </label>
+
+      <label>
+        Message
+        <textarea id="body" rows="6" required></textarea>
+      </label>
+
+      <button type="submit">Send Email</button>
+    </form>
+
+    <div id="status" class="status"></div>
+  </div>
+
+  <script src="app.js"></script>
 </body>
 </html>
