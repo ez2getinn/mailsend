@@ -12,13 +12,12 @@ module.exports = async function (context, req) {
       return;
     }
 
-    const connectionString = process.env.ACS_CONNECTION_STRING;
-    const fromAddress = process.env.ACS_FROM;
+    // Create ACS Email client
+    const client = new EmailClient(process.env.ACS_CONNECTION_STRING);
 
-    const client = new EmailClient(connectionString);
-
+    // Send email
     const poller = await client.beginSend({
-      senderAddress: fromAddress,
+      senderAddress: process.env.ACS_FROM,
       content: {
         subject,
         html: body
@@ -32,7 +31,7 @@ module.exports = async function (context, req) {
 
     context.res = {
       status: 200,
-      body: "Email sent successfully 🚀"
+      body: "Email sent successfully"
     };
   } catch (err) {
     context.res = {
