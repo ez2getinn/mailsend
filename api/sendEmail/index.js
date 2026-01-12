@@ -12,17 +12,17 @@ module.exports = async function (context, req) {
       return;
     }
 
-    // 🔐 STEP 1: Get access token from Microsoft
+    // 🔐 Get Azure access token (NOT Graph)
     const tokenRes = await fetch(
-      `https://login.microsoftonline.com/${process.env.TENANT_ID}/oauth2/v2.0/token`,
+      `https://login.microsoftonline.com/${process.env.TENANT_ID}/oauth2/token`,
       {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body: new URLSearchParams({
+          grant_type: "client_credentials",
           client_id: process.env.CLIENT_ID,
           client_secret: process.env.CLIENT_SECRET,
-          scope: "https://graph.microsoft.com/.default",
-          grant_type: "client_credentials"
+          resource: "https://communication.azure.com/"
         })
       }
     );
@@ -30,12 +30,12 @@ module.exports = async function (context, req) {
     const tokenData = await tokenRes.json();
 
     if (!tokenData.access_token) {
-      throw new Error("Failed to get access token");
+      throw new Error("Failed to get Azure Communication token");
     }
 
-    // 📧 STEP 2: Send email using Microsoft Graph
+    // 📧 Send email using Email Communication Services
     const mailRes = await fetch(
-      `https://graph.microsoft.com/v1.0/users/${process.env.MAIL_FROM}/sendMail`,
+      `https://${process.env.ACS_RESOURCE}.communication.azure.com/emails:send?api-version=2023-03-31`,
       {
         method: "POST",
         headers: {
@@ -43,17 +43,13 @@ module.exports = async function (context, req) {
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
-          message: {
+          senderAddress: process.env.MAIL_FROM,
+          recipients: {
+            to: [{ address: to }]
+          },
+          content: {
             subject,
-            body: {
-              contentType: "HTML",
-              content: body
-            },
-            toRecipients: [
-              {
-                emailAddress: { address: to }
-              }
-            ]
+            html: body
           }
         })
       }
