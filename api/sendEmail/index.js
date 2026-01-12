@@ -17,7 +17,7 @@ module.exports = async function (context, req) {
 
     // Send email
     const poller = await client.beginSend({
-      senderAddress: process.env.ACS_FROM,
+     senderAddress: process.env.MAIL_FROM,
       content: {
         subject,
         html: body
