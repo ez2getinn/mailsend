@@ -1,39 +1,229 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <title>Send Email</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+/* =========================================================
+   CORE VARIABLES
+   ========================================================= */
+:root {
+  --sf4-brand: #136EF6;
+  --radius: 10px;
+  --gap-col: 32px;
+  --gap-row: 20px;
+  --field-border: #d1d5db;
+  --label: #374151;
+  --muted: #6b7280;
+}
 
-  <link rel="stylesheet" href="style.css" />
-</head>
-<body>
-  <div class="container">
-    <h1>Send an Email</h1>
-    <p class="subtitle">Powered by Azure Communication Services</p>
+/* =========================================================
+   BASE PAGE
+   ========================================================= */
+html, body {
+  margin: 0;
+  padding: 0;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  color: #111827;
+  background: #f9fafb;
+}
 
-    <form id="emailForm">
-      <label>
-        Recipient Email
-        <input type="email" id="to" required />
-      </label>
+/* Center the whole app */
+.app {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 24px 24px 64px;
+}
 
-      <label>
-        Subject
-        <input type="text" id="subject" required />
-      </label>
+/* =========================================================
+   HEADER
+   ========================================================= */
+.brand-topbar {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 0;
+}
 
-      <label>
-        Message
-        <textarea id="body" rows="6" required></textarea>
-      </label>
+.left-logo {
+  max-height: 48px;
+}
 
-      <button type="submit">Send Email</button>
-    </form>
+.brand-title {
+  text-align: center;
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+}
 
-    <div id="status" class="status"></div>
-  </div>
+.rightNotice {
+  border: 1px solid var(--sf4-brand);
+  color: var(--sf4-brand);
+  padding: 6px 10px;
+  border-radius: var(--radius);
+  font-size: 0.85rem;
+}
 
-  <script src="app.js"></script>
-</body>
-</html>
+/* Divider */
+.divider {
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #ccc, transparent);
+  margin-bottom: 16px;
+}
+
+/* =========================================================
+   SECTION HEADERS
+   ========================================================= */
+.theme-row {
+  background: var(--sf4-brand);
+  padding: 12px 16px;
+}
+
+.row-title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: #fff;
+}
+
+/* =========================================================
+   FORM LAYOUT
+   ========================================================= */
+.row-body {
+  padding: 24px 0;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.form-grid,
+.email-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(320px, 1fr));
+  column-gap: var(--gap-col);
+  row-gap: var(--gap-row);
+}
+
+@media (max-width: 900px) {
+  .form-grid,
+  .email-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.field {
+  display: grid;
+  gap: 8px;
+}
+
+.span-2 {
+  grid-column: 1 / -1;
+}
+
+.label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--label);
+}
+
+.req {
+  color: #dc2626;
+}
+
+/* =========================================================
+   INPUTS
+   ========================================================= */
+.input,
+.select {
+  padding: 12px 14px;
+  border: 1px solid var(--field-border);
+  border-radius: var(--radius);
+  font-size: 0.95rem;
+  background: #fff;
+}
+
+.input:focus,
+.select:focus {
+  outline: none;
+  border-color: var(--sf4-brand);
+  box-shadow: 0 0 0 3px rgba(19,110,246,.15);
+}
+
+.readonly {
+  background: #f3f4f6;
+  color: var(--muted);
+}
+
+/* Uppercase fields */
+#merchantDba,
+#siteCode,
+#businessAddress {
+  text-transform: uppercase;
+}
+
+/* =========================================================
+   EMAIL BODY
+   ========================================================= */
+.rich-editor {
+  min-height: 220px;
+  padding: 12px 14px;
+  border: 1px solid var(--field-border);
+  border-radius: var(--radius);
+  background: #fff;
+  line-height: 1.45;
+}
+
+.rich-editor:focus {
+  outline: none;
+  border-color: var(--sf4-brand);
+  box-shadow: 0 0 0 3px rgba(19,110,246,.12);
+}
+
+/* =========================================================
+   ACTION ROW (SUBMIT BUTTON)
+   ========================================================= */
+.row-actions {
+  padding: 40px 0 56px;
+  display: flex;
+  justify-content: center;
+}
+
+/* =========================================================
+   BUTTONS (FIXED)
+   ========================================================= */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 14px 20px;
+  font-size: 1rem;
+  font-weight: 700;
+  border-radius: var(--radius);
+  cursor: pointer;
+  border: none;
+}
+
+/* PRIMARY BUTTON — HARD FIX */
+.btn-primary {
+  background-color: var(--sf4-brand);
+  color: #ffffff;
+  box-shadow: 0 6px 16px rgba(19,110,246,.18);
+}
+
+.btn-primary:hover {
+  background-color: #0f5ed6;
+}
+
+.btn-primary:active {
+  transform: translateY(1px);
+}
+
+.btn-primary:disabled {
+  background-color: #9ca3af;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* Button width */
+.btn-half {
+  width: min(50%, 640px);
+}
+
+@media (max-width: 720px) {
+  .btn-half {
+    width: 100%;
+  }
+}
