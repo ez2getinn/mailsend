@@ -12,17 +12,12 @@ module.exports = async function (context, req) {
       return;
     }
 
-    const connectionString = process.env.ACS_CONNECTION_STRING;
-    const fromAddress = process.env.ACS_FROM;
+    const emailClient = new EmailClient(
+      process.env.ACS_CONNECTION_STRING
+    );
 
-    if (!connectionString || !fromAddress) {
-      throw new Error("Missing ACS env vars");
-    }
-
-    const client = new EmailClient(connectionString);
-
-    const poller = await client.beginSend({
-      senderAddress: fromAddress,
+    const message = {
+      senderAddress: "DoNotReply@<YOUR_DOMAIN>.azurecomm.net",
       content: {
         subject,
         html: body
@@ -30,14 +25,16 @@ module.exports = async function (context, req) {
       recipients: {
         to: [{ address: to }]
       }
-    });
+    };
 
+    const poller = await emailClient.beginSend(message);
     await poller.pollUntilDone();
 
     context.res = {
       status: 200,
-      body: "Email sent successfully"
+      body: "Email sent successfully 🚀"
     };
+
   } catch (err) {
     context.res = {
       status: 500,
