@@ -5,30 +5,42 @@ module.exports = async function (context, req) {
     const { to, subject, body } = req.body || {};
 
     if (!to || !subject || !body) {
-      context.res = { status: 400, body: "Missing to / subject / body" };
+      context.res = {
+        status: 400,
+        body: "Missing to / subject / body"
+      };
       return;
     }
 
-    const client = new EmailClient(process.env.ACS_CONNECTION_STRING);
+    const connectionString = process.env.ACS_CONNECTION_STRING;
+    const fromAddress = process.env.ACS_FROM;
+
+    const client = new EmailClient(connectionString);
 
     const poller = await client.beginSend({
-      senderAddress: process.env.MAIL_FROM,
+      senderAddress: fromAddress,
       content: {
         subject,
-        html: body,
+        html: body
       },
       recipients: {
-        to: [{ address: to }],
-      },
+        to: [{ address: to }]
+      }
     });
 
     await poller.pollUntilDone();
 
-    context.res = { status: 200, body: "Email sent 🚀" };
+    context.res = {
+      status: 200,
+      body: "Email sent successfully 🚀"
+    };
   } catch (err) {
     context.res = {
       status: 500,
-      body: { error: err.message },
+      body: {
+        error: "Mail send failed",
+        details: err.message
+      }
     };
   }
 };
