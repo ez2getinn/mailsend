@@ -134,43 +134,61 @@
   // SUBMIT
   // ---------------------------
   async function handleSubmit() {
-    if (!validate()) return;
+  if (isSubmitting) return;
+  if (!validate()) return;
 
-    var subject = buildSubject();
-    var body = buildEmailBody();
+  const subject = buildSubject();
+  const htmlBody = buildEmailBodyHTML(); // MUST EXIST
 
-    var payload = {
-      to: DEFAULT_TO_EMAIL,
-      subject: subject,
-      body: body
-    };
+  if (!htmlBody || !subject) {
+    Swal.fire("Error", "Email content is empty.", "error");
+    return;
+  }
 
-    var confirm = await Swal.fire({
-      title: "Confirm Email",
-      html:
-        "<strong>To:</strong> " + DEFAULT_TO_EMAIL +
-        "<br/><strong>Subject:</strong><br/>" + esc(subject),
-      showCancelButton: true,
-      confirmButtonText: "Send Email"
+  const recipients = getRecipientEmails().filter(isValidEmail);
+
+  const payload = {
+    to: DEFAULT_NOTIFY_EMAIL,
+    subject,
+    htmlBody,
+    bcc: recipients
+  };
+
+  const confirm = await Swal.fire({
+    title: "Confirm Submission",
+    html: `
+      <strong>To (Ticket):</strong> ${DEFAULT_NOTIFY_EMAIL}<br/>
+      <strong>BCC (Recipients):</strong> ${recipients.join(", ")}<br/><br/>
+      <strong>Subject:</strong><br/>${esc(subject)}
+    `,
+    showCancelButton: true,
+    confirmButtonText: "Submit"
+  });
+
+  if (!confirm.isConfirmed) return;
+
+  isSubmitting = true;
+  previewBtn.disabled = true;
+
+  try {
+    const res = await fetch(API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
     });
 
-    if (!confirm.isConfirmed) return;
+    const text = await res.text();
+    if (!res.ok) throw new Error(text || "Submission failed");
 
-    try {
-      var res = await fetch(API_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-      });
+    Swal.fire("Success", "Email sent successfully.", "success");
 
-      if (!res.ok) throw new Error("Request failed");
-
-      Swal.fire("Success", "Email sent successfully.", "success");
-
-    } catch (err) {
-      Swal.fire("Error", "Failed to send email.", "error");
-    }
+  } catch (err) {
+    Swal.fire("Error", err.message || "Failed to send email", "error");
+  } finally {
+    isSubmitting = false;
+    previewBtn.disabled = false;
   }
+}
 
   // ---------------------------
   // INIT
@@ -178,6 +196,7 @@
   window.addEventListener("load", function () {
     subjectInput.value = buildSubject();
     bodyDiv.innerHTML = buildEmailBody();
+    setReadonlyValue(notifyEmailInput, DEFAULT_NOTIFY_EMAIL);
     previewBtn.addEventListener("click", handleSubmit);
   });
 
