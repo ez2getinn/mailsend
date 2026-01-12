@@ -1,229 +1,175 @@
-/* =========================================================
-   CORE VARIABLES
-   ========================================================= */
-:root {
-  --sf4-brand: #136EF6;
-  --radius: 10px;
-  --gap-col: 32px;
-  --gap-row: 20px;
-  --field-border: #d1d5db;
-  --label: #374151;
-  --muted: #6b7280;
-}
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-/* =========================================================
-   BASE PAGE
-   ========================================================= */
-html, body {
-  margin: 0;
-  padding: 0;
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  color: #111827;
-  background: #f9fafb;
-}
+    <title>Radisson Boarding E2E &gt; GWO</title>
 
-/* Center the whole app */
-.app {
-  max-width: 1100px;
-  margin: 0 auto;
-  padding: 24px 24px 64px;
-}
+    <!-- CSS -->
+    <link rel="stylesheet" href="/style.css" />
 
-/* =========================================================
-   HEADER
-   ========================================================= */
-.brand-topbar {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  align-items: center;
-  gap: 16px;
-  padding: 16px 0;
-}
+    <!-- Netlify-safe context (replaces GAS templating) -->
+    <script>
+      window.APP_CONTEXT = {
+        signedInEmail: "user@shift4.com",
+        notifyEmail: "ez2getin@hotmail.com"
+      };
+    </script>
+  </head>
 
-.left-logo {
-  max-height: 48px;
-}
+  <body>
+    <div class="app">
+      <!-- Header -->
+      <section class="brand-topbar">
+        <div id="leftLogoContainer">
+          <img src="/assets/logo.png" alt="Main Logo" class="left-logo" />
+        </div>
 
-.brand-title {
-  text-align: center;
-  margin: 0;
-  font-size: 1.25rem;
-  font-weight: 700;
-}
+        <div class="brand-center">
+          <h1 class="brand-title">RADISSON BOARDING E2E &gt; GWO</h1>
+        </div>
 
-.rightNotice {
-  border: 1px solid var(--sf4-brand);
-  color: var(--sf4-brand);
-  padding: 6px 10px;
-  border-radius: var(--radius);
-  font-size: 0.85rem;
-}
+        <div class="rightNotice">
+          <span>INTERNAL USE ONLY</span>
+        </div>
+      </section>
 
-/* Divider */
-.divider {
-  height: 2px;
-  background: linear-gradient(90deg, transparent, #ccc, transparent);
-  margin-bottom: 16px;
-}
+      <div class="divider"></div>
 
-/* =========================================================
-   SECTION HEADERS
-   ========================================================= */
-.theme-row {
-  background: var(--sf4-brand);
-  padding: 12px 16px;
-}
+      <!-- MERCHANT INFORMATION -->
+      <section class="row-section theme-row">
+        <h2 class="row-title">MERCHANT INFORMATION</h2>
+      </section>
 
-.row-title {
-  margin: 0;
-  font-size: 1.05rem;
-  font-weight: 600;
-  color: #fff;
-}
+      <section class="row-body">
+        <div class="form-grid">
+          <!-- Signed-in Email -->
+          <div class="field">
+            <label class="label" for="userEmail">Signed-in Email</label>
+            <input id="userEmail" class="input readonly" type="email" readonly />
+          </div>
 
-/* =========================================================
-   FORM LAYOUT
-   ========================================================= */
-.row-body {
-  padding: 24px 0;
-  border-bottom: 1px solid #e5e7eb;
-}
+          <!-- Default Notification Email -->
+          <div class="field">
+            <label class="label" for="notifyEmail">Default Notification Email</label>
+            <input id="notifyEmail" class="input readonly" type="email" readonly />
+          </div>
 
-.form-grid,
-.email-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(320px, 1fr));
-  column-gap: var(--gap-col);
-  row-gap: var(--gap-row);
-}
+          <div class="field">
+            <label class="label" for="merchantDba">
+              Merchant DBA Name <span class="req">*</span>
+            </label>
+            <input id="merchantDba" class="input" type="text" />
+          </div>
 
-@media (max-width: 900px) {
-  .form-grid,
-  .email-grid {
-    grid-template-columns: 1fr;
-  }
-}
+          <div class="field">
+            <label class="label" for="siteCode">
+              Radisson Site Code <span class="req">*</span>
+            </label>
+            <input id="siteCode" class="input" type="text" />
+          </div>
 
-.field {
-  display: grid;
-  gap: 8px;
-}
+          <div class="field">
+            <label class="label" for="e2eMid">
+              Shift4 E2E MID <span class="req">*</span>
+            </label>
+            <input id="e2eMid" class="input" type="text" />
+          </div>
 
-.span-2 {
-  grid-column: 1 / -1;
-}
+          <div class="field">
+            <label class="label" for="serialNumber">
+              Shift4 Serial Number <span class="req">*</span>
+            </label>
+            <input id="serialNumber" class="input" type="text" />
+          </div>
 
-.label {
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: var(--label);
-}
+          <div class="field span-2">
+            <label class="label" for="businessAddress">
+              Business Address <span class="req">*</span>
+            </label>
+            <input id="businessAddress" class="input" type="text" />
+          </div>
 
-.req {
-  color: #dc2626;
-}
+          <div class="field">
+            <label class="label" for="contactFirstName">
+              Contact First Name <span class="req">*</span>
+            </label>
+            <input id="contactFirstName" class="input" type="text" />
+          </div>
 
-/* =========================================================
-   INPUTS
-   ========================================================= */
-.input,
-.select {
-  padding: 12px 14px;
-  border: 1px solid var(--field-border);
-  border-radius: var(--radius);
-  font-size: 0.95rem;
-  background: #fff;
-}
+          <div class="field">
+            <label class="label" for="contactLastName">
+              Contact Last Name <span class="req">*</span>
+            </label>
+            <input id="contactLastName" class="input" type="text" />
+          </div>
 
-.input:focus,
-.select:focus {
-  outline: none;
-  border-color: var(--sf4-brand);
-  box-shadow: 0 0 0 3px rgba(19,110,246,.15);
-}
+          <div class="field span-2">
+            <label class="label" for="contactPhone">
+              Contact Phone <span class="req">*</span>
+            </label>
+            <input id="contactPhone" class="input" type="tel" />
+          </div>
 
-.readonly {
-  background: #f3f4f6;
-  color: var(--muted);
-}
+          <div class="field span-2">
+            <label class="label" for="pmsPos">
+              PMS / POS <span class="req">*</span>
+            </label>
+            <select id="pmsPos" class="select">
+              <option value="" disabled selected>Select a system</option>
+              <option>Oracle Opera OPI</option>
+              <option>Choice Advantage</option>
+              <option>MICROS</option>
+              <option>Simphony FE</option>
+            </select>
+          </div>
+        </div>
+      </section>
 
-/* Uppercase fields */
-#merchantDba,
-#siteCode,
-#businessAddress {
-  text-transform: uppercase;
-}
+      <!-- EMAIL TEMPLATE -->
+      <section class="row-section theme-row">
+        <h2 class="row-title">EMAIL TEMPLATE FOR MERCHANT</h2>
+      </section>
 
-/* =========================================================
-   EMAIL BODY
-   ========================================================= */
-.rich-editor {
-  min-height: 220px;
-  padding: 12px 14px;
-  border: 1px solid var(--field-border);
-  border-radius: var(--radius);
-  background: #fff;
-  line-height: 1.45;
-}
+      <section class="row-body">
+        <div class="email-grid">
+          <div class="field span-2">
+            <label class="label">To</label>
 
-.rich-editor:focus {
-  outline: none;
-  border-color: var(--sf4-brand);
-  box-shadow: 0 0 0 3px rgba(19,110,246,.12);
-}
+            <!-- Keep this wrapper. JS will replace/upgrade it -->
+            <div id="toList" class="to-list">
+              <input class="input email-to" type="email" placeholder="merchant@example.com" />
+            </div>
 
-/* =========================================================
-   ACTION ROW (SUBMIT BUTTON)
-   ========================================================= */
-.row-actions {
-  padding: 40px 0 56px;
-  display: flex;
-  justify-content: center;
-}
+            <button id="addToBtn" type="button">+ Add another recipient</button>
+          </div>
 
-/* =========================================================
-   BUTTONS (FIXED)
-   ========================================================= */
-.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 14px 20px;
-  font-size: 1rem;
-  font-weight: 700;
-  border-radius: var(--radius);
-  cursor: pointer;
-  border: none;
-}
+          <div class="field span-2">
+            <label class="label" for="emailSubject">Subject (auto)</label>
+            <input id="emailSubject" class="input readonly" type="text" readonly />
+          </div>
 
-/* PRIMARY BUTTON — HARD FIX */
-.btn-primary {
-  background-color: var(--sf4-brand);
-  color: #ffffff;
-  box-shadow: 0 6px 16px rgba(19,110,246,.18);
-}
+          <div class="field span-2">
+            <label class="label" for="emailBodyDiv">Body</label>
+            <div id="emailBodyDiv" class="rich-editor" contenteditable="true"></div>
+          </div>
+        </div>
+      </section>
+    </div>
 
-.btn-primary:hover {
-  background-color: #0f5ed6;
-}
+    <!-- ACTION -->
+    <section class="row-actions">
+      <button id="previewBtn" class="btn btn-primary btn-half" type="button">
+        VIEW DETAILS BEFORE SUBMITTING
+      </button>
+    </section>
 
-.btn-primary:active {
-  transform: translateY(1px);
-}
+    <!-- SweetAlert -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
-.btn-primary:disabled {
-  background-color: #9ca3af;
-  cursor: not-allowed;
-  box-shadow: none;
-}
+    <!-- JS -->
+    <script src="/app.js" defer></script>
 
-/* Button width */
-.btn-half {
-  width: min(50%, 640px);
-}
-
-@media (max-width: 720px) {
-  .btn-half {
-    width: 100%;
-  }
-}
+  </body>
+</html>
