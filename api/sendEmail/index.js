@@ -1,24 +1,20 @@
-const fetch = require("node-fetch");
-
-module.exports = async function (context, req) {
+export default async function (context, req) {
   try {
     const { to, subject, body } = req.body || {};
 
     if (!to || !subject || !body) {
-      context.res = {
+      return {
         status: 400,
-        body: { error: "Missing to, subject, or body" }
+        body: "Missing required fields"
       };
-      return;
     }
 
     const tenantId = process.env.TENANT_ID;
     const clientId = process.env.CLIENT_ID;
     const clientSecret = process.env.CLIENT_SECRET;
-    const mailFrom = process.env.MAIL_FROM;
+    const from = process.env.MAIL_FROM;
 
-    // 1️⃣ Get access token
-    const tokenRes = await fetch(
+    const tokenResponse = await fetch(
       `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`,
       {
         method: "POST",
@@ -32,20 +28,11 @@ module.exports = async function (context, req) {
       }
     );
 
-    const tokenData = await tokenRes.json();
+    const tokenData = await tokenResponse.json();
     const accessToken = tokenData.access_token;
 
-    if (!accessToken) {
-      context.res = {
-        status: 500,
-        body: { error: "Failed to acquire access token", tokenData }
-      };
-      return;
-    }
-
-    // 2️⃣ Send email
-    const mailRes = await fetch(
-      `https://graph.microsoft.com/v1.0/users/${mailFrom}/sendMail`,
+    const graphResponse = await fetch(
+      `https://graph.microsoft.com/v1.0/users/${from}/sendMail`,
       {
         method: "POST",
         headers: {
@@ -64,30 +51,30 @@ module.exports = async function (context, req) {
                 emailAddress: { address: to }
               }
             ]
-          }
+          },
+          saveToSentItems: true
         })
       }
     );
 
-    if (!mailRes.ok) {
-      const errorText = await mailRes.text();
-      context.res = {
-        status: 500,
-        body: { error: "Mail send failed", details: errorText }
-      };
-      return;
+    const responseText = await graphResponse.text();
+
+    if (!graphResponse.ok) {
+      throw new Error(responseText);
     }
 
-    // ✅ SUCCESS RESPONSE (THIS WAS MISSING)
-    context.res = {
+    return {
       status: 200,
-      body: { success: true }
+      body: responseText || "Mail sent"
     };
+
   } catch (err) {
-    // ✅ GUARANTEED ERROR RESPONSE
-    context.res = {
+    return {
       status: 500,
-      body: { error: err.message }
+      body: JSON.stringify({
+        error: "Mail send failed",
+        details: err.message
+      })
     };
   }
-};
+}
