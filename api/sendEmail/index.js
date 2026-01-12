@@ -1,3 +1,5 @@
+import fetch from "node-fetch";
+
 export default async function (context, req) {
   try {
     const { to, subject, body } = req.body || {};
