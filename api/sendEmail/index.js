@@ -2,32 +2,33 @@ const { EmailClient } = require("@azure/communication-email");
 
 module.exports = async function (context, req) {
   try {
-    const { to, subject, body } = req.body || {};
+    const { to, subject, htmlBody, bcc } = req.body || {};
 
-    if (!to || !subject || !body) {
+    if (!to || !subject || !htmlBody) {
       context.res = {
         status: 400,
-        body: "Missing to / subject / body"
+        body: "Missing to / subject / htmlBody"
       };
       return;
     }
 
-    
-    // Create ACS Email client
     const client = new EmailClient(process.env.ACS_CONNECTION_STRING);
 
-    // Send email
-    const poller = await client.beginSend({
-     senderAddress: process.env.MAIL_FROM,
+    const message = {
+      senderAddress: process.env.MAIL_FROM,
       content: {
         subject,
-        html: body
+        html: htmlBody
       },
       recipients: {
-        to: [{ address: to }]
+        to: [{ address: to }],
+        bcc: Array.isArray(bcc)
+          ? bcc.map(email => ({ address: email }))
+          : []
       }
-    });
+    };
 
+    const poller = await client.beginSend(message);
     await poller.pollUntilDone();
 
     context.res = {
@@ -35,6 +36,8 @@ module.exports = async function (context, req) {
       body: "Email sent successfully"
     };
   } catch (err) {
+    context.log("EMAIL ERROR:", err);
+
     context.res = {
       status: 500,
       body: {
