@@ -2,31 +2,30 @@ const fetch = require("node-fetch");
 
 module.exports = async function (context, req) {
   try {
-    const {
-      TENANT_ID,
-      CLIENT_ID,
-      CLIENT_SECRET,
-      MAIL_FROM
-    } = process.env;
-
     const { to, subject, body } = req.body || {};
 
     if (!to || !subject || !body) {
-      return {
+      context.res = {
         status: 400,
-        body: { error: "to, subject, and body are required" }
+        body: { error: "Missing to, subject, or body" }
       };
+      return;
     }
+
+    const tenantId = process.env.TENANT_ID;
+    const clientId = process.env.CLIENT_ID;
+    const clientSecret = process.env.CLIENT_SECRET;
+    const mailFrom = process.env.MAIL_FROM;
 
     // 1️⃣ Get access token
     const tokenRes = await fetch(
-      `https://login.microsoftonline.com/${TENANT_ID}/oauth2/v2.0/token`,
+      `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`,
       {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body: new URLSearchParams({
-          client_id: CLIENT_ID,
-          client_secret: CLIENT_SECRET,
+          client_id: clientId,
+          client_secret: clientSecret,
           scope: "https://graph.microsoft.com/.default",
           grant_type: "client_credentials"
         })
@@ -36,9 +35,17 @@ module.exports = async function (context, req) {
     const tokenData = await tokenRes.json();
     const accessToken = tokenData.access_token;
 
+    if (!accessToken) {
+      context.res = {
+        status: 500,
+        body: { error: "Failed to acquire access token", tokenData }
+      };
+      return;
+    }
+
     // 2️⃣ Send email
     const mailRes = await fetch(
-      `https://graph.microsoft.com/v1.0/users/${MAIL_FROM}/sendMail`,
+      `https://graph.microsoft.com/v1.0/users/${mailFrom}/sendMail`,
       {
         method: "POST",
         headers: {
@@ -63,17 +70,22 @@ module.exports = async function (context, req) {
     );
 
     if (!mailRes.ok) {
-      const err = await mailRes.text();
-      throw new Error(err);
+      const errorText = await mailRes.text();
+      context.res = {
+        status: 500,
+        body: { error: "Mail send failed", details: errorText }
+      };
+      return;
     }
 
-    return {
+    // ✅ SUCCESS RESPONSE (THIS WAS MISSING)
+    context.res = {
       status: 200,
       body: { success: true }
     };
-
   } catch (err) {
-    return {
+    // ✅ GUARANTEED ERROR RESPONSE
+    context.res = {
       status: 500,
       body: { error: err.message }
     };
