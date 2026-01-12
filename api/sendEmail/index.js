@@ -12,6 +12,7 @@ module.exports = async function (context, req) {
       return;
     }
 
+    
     // Create ACS Email client
     const client = new EmailClient(process.env.ACS_CONNECTION_STRING);
 
