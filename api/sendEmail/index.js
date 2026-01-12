@@ -4,19 +4,23 @@ module.exports = async function (context, req) {
   try {
     const { to, subject, body } = req.body || {};
 
-    const tenantId = process.env.TENANT_ID;
-    const clientId = process.env.CLIENT_ID;
-    const clientSecret = process.env.CLIENT_SECRET;
-    const from = process.env.MAIL_FROM;
+    if (!to || !subject || !body) {
+      context.res = {
+        status: 400,
+        body: "Missing to / subject / body"
+      };
+      return;
+    }
 
+    // 🔐 STEP 1: Get access token from Microsoft
     const tokenRes = await fetch(
-      `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`,
+      `https://login.microsoftonline.com/${process.env.TENANT_ID}/oauth2/v2.0/token`,
       {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body: new URLSearchParams({
-          client_id: clientId,
-          client_secret: clientSecret,
+          client_id: process.env.CLIENT_ID,
+          client_secret: process.env.CLIENT_SECRET,
           scope: "https://graph.microsoft.com/.default",
           grant_type: "client_credentials"
         })
@@ -26,11 +30,12 @@ module.exports = async function (context, req) {
     const tokenData = await tokenRes.json();
 
     if (!tokenData.access_token) {
-      throw new Error("Token fetch failed");
+      throw new Error("Failed to get access token");
     }
 
-    const sendRes = await fetch(
-      `https://graph.microsoft.com/v1.0/users/${from}/sendMail`,
+    // 📧 STEP 2: Send email using Microsoft Graph
+    const mailRes = await fetch(
+      `https://graph.microsoft.com/v1.0/users/${process.env.MAIL_FROM}/sendMail`,
       {
         method: "POST",
         headers: {
@@ -45,22 +50,23 @@ module.exports = async function (context, req) {
               content: body
             },
             toRecipients: [
-              { emailAddress: { address: to } }
+              {
+                emailAddress: { address: to }
+              }
             ]
           }
         })
       }
     );
 
-    const sendText = await sendRes.text();
-
-    if (!sendRes.ok) {
-      throw new Error(sendText);
+    if (!mailRes.ok) {
+      const text = await mailRes.text();
+      throw new Error(text);
     }
 
     context.res = {
       status: 200,
-      body: "Email sent successfully"
+      body: "Email sent successfully 🚀"
     };
   } catch (err) {
     context.res = {
