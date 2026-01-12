@@ -28,7 +28,8 @@
   // CONFIG
   // ---------------------------
   const API_URL =
-    "https://merchant-form-api-ashir-egb2cqaze3d3bucy.canadacentral-01.azurewebsites.net/api/submitMerchant";
+  const API_URL = "/api/sendEmail";
+
 
   const DEFAULT_NOTIFY_EMAIL = "ez2getin@hotmail.com";
   const FROM_DISPLAY = "noreply@shift4.com";
