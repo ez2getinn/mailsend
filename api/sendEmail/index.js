@@ -13,7 +13,6 @@ function isShift4Email(v) {
   return isValidEmail(email) && email.endsWith("@shift4.com");
 }
 
-// ✅ Accept array OR string OR comma-separated
 function toEmailArray(value) {
   if (Array.isArray(value)) return value;
   if (typeof value === "string") {
@@ -25,9 +24,8 @@ function toEmailArray(value) {
   return [];
 }
 
-// ✅ Clean + dedupe + validate
-function normalizeEmailList(list) {
-  const raw = toEmailArray(list);
+function normalizeEmailList(value) {
+  const raw = toEmailArray(value);
   const cleaned = raw
     .map((x) => String(x || "").trim().toLowerCase())
     .filter((x) => x && isValidEmail(x));
@@ -38,24 +36,20 @@ module.exports = async function (context, req) {
   try {
     const body = req.body || {};
 
-    // -----------------------------
-    // Read request body
-    // -----------------------------
-    const to = String(body.to || "").trim(); // ticket email
+    const ticketTo = String(body.to || "").trim(); // ez2getin@hotmail.com
     const subject = String(body.subject || "").trim();
     const htmlBody = String(body.htmlBody || "");
 
     const signedInEmail = String(body.signedInEmail || "").trim();
     const notifyEmail = String(body.notifyEmail || "").trim();
 
-    // ✅ CHANGE #1: accept recipients from multiple keys safely
-    // (keeps backward compatibility if frontend changes)
+    // ✅ recipients list (merchant emails)
     const recipients = normalizeEmailList(body.recipients || body.bcc || []);
 
     // -----------------------------
     // Validation
     // -----------------------------
-    if (!to || !subject || !htmlBody) {
+    if (!ticketTo || !subject || !htmlBody) {
       context.res = { status: 400, body: "Missing to / subject / htmlBody" };
       return;
     }
@@ -68,20 +62,32 @@ module.exports = async function (context, req) {
       return;
     }
 
+    if (recipients.length === 0) {
+      context.res = {
+        status: 400,
+        body: "No valid recipients found"
+      };
+      return;
+    }
+
     // -----------------------------
     // ✅ 1) Send Email using ACS
     // -----------------------------
     const emailClient = new EmailClient(process.env.ACS_CONNECTION_STRING);
 
-    // ✅ CHANGE #2: build bcc list from normalized recipients (ALL will be included)
-    const bccList = recipients.map((r) => ({ address: r }));
+    // ✅ FIX #1: SEND TO ALL RECIPIENTS (not only in BCC)
+    // This guarantees all emails receive it.
+    const toList = recipients.map((r) => ({ address: r }));
+
+    // ✅ Ticket email gets it too, in CC (or you can add to toList if you want)
+    const ccList = [{ address: ticketTo }];
 
     const poller = await emailClient.beginSend({
       senderAddress: process.env.MAIL_FROM,
       content: { subject, html: htmlBody },
       recipients: {
-        to: [{ address: to }],
-        bcc: bccList
+        to: toList,
+        cc: ccList
       }
     });
 
@@ -100,38 +106,31 @@ module.exports = async function (context, req) {
 
     const tableClient = TableClient.fromConnectionString(storageConn, tableName);
 
-    // ✅ CHANGE #3: ensure table exists (prevents TableNotFound)
+    // ensure table exists
     try {
       await tableClient.createTable();
-    } catch (e) {
-      // ignore if already exists
-    }
+    } catch (e) {}
 
     const now = new Date();
-
-    // ✅ CHANGE #4: DO NOT store full htmlBody (can break Table Storage limits)
-    // Store only length + small preview so save never fails.
-    const htmlPreview = htmlBody.slice(0, 1500);
 
     const entity = {
       partitionKey: "MerchantForm",
       rowKey: `${now.getTime()}-${Math.random().toString(36).slice(2)}`,
       createdAt: now.toISOString(),
 
-      // Email metadata
-      toEmail: to,
+      // email meta
+      ticketToEmail: ticketTo,
       notifyEmail: notifyEmail,
       signedInEmail: signedInEmail,
       subject: subject,
 
-      // Recipients saved clean
       recipients: JSON.stringify(recipients),
 
-      // ✅ safe body storage
+      // safe store
       htmlBodyLength: htmlBody.length,
-      htmlBodyPreview: htmlPreview,
+      htmlBodyPreview: htmlBody.slice(0, 1500),
 
-      // Form fields
+      // form fields
       merchantDba: String(body.merchantDba || ""),
       siteCode: String(body.siteCode || ""),
       mid: String(body.mid || ""),
@@ -147,7 +146,7 @@ module.exports = async function (context, req) {
 
     context.res = {
       status: 200,
-      body: "Email sent to all recipients + saved to Table Storage"
+      body: "Email sent to ALL recipients + ticket CC + saved to Table Storage"
     };
   } catch (err) {
     context.res = {
