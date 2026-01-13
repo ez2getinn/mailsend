@@ -480,4 +480,6 @@
     allInputs[i].addEventListener("change", updatePreviewFields);
   }
 });
+})();
+
 
