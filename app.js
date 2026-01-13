@@ -448,37 +448,36 @@
   // INIT
   // ---------------------------
   window.addEventListener("load", async function () {
-    setReadonlyValue(notifyEmailInput, DEFAULT_NOTIFY_EMAIL);
+  setReadonlyValue(notifyEmailInput, DEFAULT_NOTIFY_EMAIL);
 
-    normalizeRecipientUI();
-    updatePreviewFields();
+  normalizeRecipientUI();
+  updatePreviewFields();
 
-    // ask office email immediately
-    await ensureOfficeEmail();
+  // ✅ FORCE office email popup on load when missing
+  await ensureOfficeEmail();
 
-    addToBtn.onclick = function () {
-      addRecipientField("");
-    };
+  addToBtn.onclick = function () {
+    addRecipientField("");
+  };
 
-    previewBtn.onclick = handleSubmit;
+  previewBtn.onclick = handleSubmit;
 
-    // update subject + body when user types
-    var allInputs = [
-      merchantDba,
-      siteCode,
-      mid,
-      serial,
-      business,
-      contactFirst,
-      contactLast,
-      contactPhone,
-      pmsPos
-    ];
+  var allInputs = [
+    merchantDba,
+    siteCode,
+    mid,
+    serial,
+    business,
+    contactFirst,
+    contactLast,
+    contactPhone,
+    pmsPos
+  ];
 
-    for (var i = 0; i < allInputs.length; i++) {
-      if (!allInputs[i]) continue;
-      allInputs[i].addEventListener("input", updatePreviewFields);
-      allInputs[i].addEventListener("change", updatePreviewFields);
-    }
-  });
-})();
+  for (var i = 0; i < allInputs.length; i++) {
+    if (!allInputs[i]) continue;
+    allInputs[i].addEventListener("input", updatePreviewFields);
+    allInputs[i].addEventListener("change", updatePreviewFields);
+  }
+});
+
