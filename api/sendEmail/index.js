@@ -2,7 +2,7 @@ const { EmailClient } = require("@azure/communication-email");
 
 module.exports = async function (context, req) {
   try {
-    const { to, subject, htmlBody, bcc } = req.body || {};
+    const { to, subject, htmlBody } = req.body || {};
 
     if (!to || !subject || !htmlBody) {
       context.res = {
@@ -14,21 +14,17 @@ module.exports = async function (context, req) {
 
     const client = new EmailClient(process.env.ACS_CONNECTION_STRING);
 
-    const message = {
+    const poller = await client.beginSend({
       senderAddress: process.env.MAIL_FROM,
       content: {
-        subject,
+        subject: subject,
         html: htmlBody
       },
       recipients: {
-        to: [{ address: to }],
-        bcc: Array.isArray(bcc)
-          ? bcc.map(email => ({ address: email }))
-          : []
+        to: [{ address: to }]
       }
-    };
+    });
 
-    const poller = await client.beginSend(message);
     await poller.pollUntilDone();
 
     context.res = {
@@ -36,14 +32,9 @@ module.exports = async function (context, req) {
       body: "Email sent successfully"
     };
   } catch (err) {
-    context.log("EMAIL ERROR:", err);
-
     context.res = {
       status: 500,
-      body: {
-        error: "Mail send failed",
-        details: err.message
-      }
+      body: err.message || "Email send failed"
     };
   }
 };
