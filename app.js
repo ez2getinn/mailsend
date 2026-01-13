@@ -2,6 +2,7 @@
 // Merchant Form Frontend
 // Azure Static Web App – FINAL, CLEAN (WORKING)
 // Sends: to + bcc + subject + htmlBody
+// + NEW: Ask Shift4 Office Email (SweetAlert) + localStorage
 // =======================================
 
 (function () {
@@ -26,17 +27,33 @@
     });
   }
 
+  function isValidEmail(v) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+  }
+
+  function isShift4Email(v) {
+    if (!v) return false;
+    var email = String(v).trim().toLowerCase();
+    return isValidEmail(email) && email.endsWith("@shift4.com");
+  }
+
   // ---------------------------
   // CONFIG
   // ---------------------------
   var API_URL = "/api/sendEmail";
   var DEFAULT_NOTIFY_EMAIL = "ez2getin@hotmail.com";
 
+  // localStorage key
+  var LS_OFFICE_EMAIL_KEY = "merchantForm_officeEmail";
+
   // ---------------------------
-  // CONTEXT FROM index.html
+  // CONTEXT FROM index.html (fallback only)
   // ---------------------------
   var CONTEXT = window.APP_CONTEXT || {};
-  var SIGNED_IN_EMAIL = (CONTEXT.signedInEmail || "").trim();
+  var CONTEXT_SIGNED_IN_EMAIL = (CONTEXT.signedInEmail || "").trim();
+
+  // ✅ This will be used everywhere (payload + UI)
+  var SIGNED_IN_EMAIL = "";
 
   // ---------------------------
   // ELEMENTS
@@ -85,10 +102,6 @@
     }
 
     return emails;
-  }
-
-  function isValidEmail(v) {
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
   }
 
   function addRecipientField(prefill) {
@@ -202,7 +215,7 @@
 
     html += "</ul>";
 
-    // Footer logo + phone + copyright (logo must be absolute URL to show in email clients)
+    // Footer logo + phone + copyright (absolute URL required for email clients)
     html += '<div style="text-align:center;margin-top:20px;">';
     html +=
       '<img src="https://jolly-hill-02879b60f.2.azurestaticapps.net/assets/logo.png" alt="Shift4" style="width:110px;height:auto;display:block;margin:0 auto 10px auto;"/>';
@@ -218,6 +231,12 @@
   // VALIDATION
   // ---------------------------
   function validate() {
+    // ✅ must have signed in office email first
+    if (!SIGNED_IN_EMAIL || !isShift4Email(SIGNED_IN_EMAIL)) {
+      Swal.fire("Office Email Required", "Please enter a valid @shift4.com email.", "error");
+      return false;
+    }
+
     var required = [
       merchantDba,
       siteCode,
@@ -247,10 +266,85 @@
   }
 
   // ---------------------------
+  // OFFICE EMAIL FLOW (SweetAlert + localStorage)
+  // ---------------------------
+  async function ensureOfficeEmail() {
+    // 1) check localStorage first
+    var saved = "";
+    try {
+      saved = (localStorage.getItem(LS_OFFICE_EMAIL_KEY) || "").trim();
+    } catch (e) {
+      saved = "";
+    }
+
+    // 2) if saved and valid -> use it
+    if (isShift4Email(saved)) {
+      SIGNED_IN_EMAIL = saved;
+      setReadonlyValue(userEmailInput, SIGNED_IN_EMAIL);
+      return;
+    }
+
+    // 3) otherwise fallback to CONTEXT value if valid
+    if (isShift4Email(CONTEXT_SIGNED_IN_EMAIL)) {
+      SIGNED_IN_EMAIL = CONTEXT_SIGNED_IN_EMAIL;
+      try {
+        localStorage.setItem(LS_OFFICE_EMAIL_KEY, SIGNED_IN_EMAIL);
+      } catch (e2) {}
+      setReadonlyValue(userEmailInput, SIGNED_IN_EMAIL);
+      return;
+    }
+
+    // 4) force user input until valid
+    while (true) {
+      var result = await Swal.fire({
+        title: "Enter your Shift4 office email",
+        html:
+          "<div style='text-align:left;line-height:1.4;'>" +
+          "<div style='font-weight:700;margin-bottom:6px;'>Office Email (must end with @shift4.com)</div>" +
+          "<div style='font-size:13px;color:#6b7280;margin-bottom:10px;'>Example: john.doe@shift4.com</div>" +
+          "</div>",
+        input: "email",
+        inputPlaceholder: "name@shift4.com",
+        inputAttributes: { autocapitalize: "off", autocorrect: "off" },
+        confirmButtonText: "Continue",
+        allowOutsideClick: false,
+        allowEscapeKey: false,
+        showCancelButton: false,
+        preConfirm: function (value) {
+          var v = (value || "").trim().toLowerCase();
+          if (!isShift4Email(v)) {
+            Swal.showValidationMessage("Invalid office email. Must end with @shift4.com");
+            return false;
+          }
+          return v;
+        }
+      });
+
+      var officeEmail = (result.value || "").trim().toLowerCase();
+      if (isShift4Email(officeEmail)) {
+        SIGNED_IN_EMAIL = officeEmail;
+
+        try {
+          localStorage.setItem(LS_OFFICE_EMAIL_KEY, SIGNED_IN_EMAIL);
+        } catch (e3) {}
+
+        setReadonlyValue(userEmailInput, SIGNED_IN_EMAIL);
+        return;
+      }
+    }
+  }
+
+  // ---------------------------
   // SUBMIT
   // ---------------------------
   async function handleSubmit() {
     if (isSubmitting) return;
+
+    // make sure office email exists first
+    if (!SIGNED_IN_EMAIL || !isShift4Email(SIGNED_IN_EMAIL)) {
+      await ensureOfficeEmail();
+    }
+
     if (!validate()) return;
 
     var subject = buildSubject();
@@ -264,7 +358,7 @@
       subject: subject,
       htmlBody: htmlBody,
       recipients: recipients,
-    
+
       merchantDba: merchantDba.value.trim(),
       siteCode: siteCode.value.trim(),
       mid: mid.value.trim(),
@@ -274,7 +368,7 @@
       contactLastName: contactLast.value.trim(),
       contactPhone: contactPhone.value.trim(),
       pmsPos: pmsPos.value.trim(),
-    
+
       signedInEmail: SIGNED_IN_EMAIL,
       notifyEmail: DEFAULT_NOTIFY_EMAIL
     };
@@ -286,6 +380,7 @@
         "<div style='border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;background:#fff;'>" +
         "<div style='background:#136EF6;color:#fff;font-weight:800;padding:10px 12px;'>EMAIL ROUTING</div>" +
         "<div style='padding:12px;'>" +
+        "<div><strong>Submitted By:</strong> " + esc(SIGNED_IN_EMAIL) + "</div>" +
         "<div><strong>To (Ticket):</strong> " + esc(DEFAULT_NOTIFY_EMAIL) + "</div>" +
         "<div><strong>BCC (Recipients):</strong> " + esc(recipients.join(", ")) + "</div>" +
         "<div style='margin-top:8px;'><strong>Subject:</strong> " + esc(subject) + "</div>" +
@@ -326,7 +421,6 @@
         timer: 2000,
         showConfirmButton: false
       });
-
     } catch (err) {
       Swal.fire("Error", err.message || "Failed to send email", "error");
     } finally {
@@ -353,12 +447,14 @@
   // ---------------------------
   // INIT
   // ---------------------------
-  window.addEventListener("load", function () {
-    setReadonlyValue(userEmailInput, SIGNED_IN_EMAIL);
+  window.addEventListener("load", async function () {
     setReadonlyValue(notifyEmailInput, DEFAULT_NOTIFY_EMAIL);
 
     normalizeRecipientUI();
     updatePreviewFields();
+
+    // ask office email immediately
+    await ensureOfficeEmail();
 
     addToBtn.onclick = function () {
       addRecipientField("");
@@ -385,5 +481,4 @@
       allInputs[i].addEventListener("change", updatePreviewFields);
     }
   });
-
 })();
