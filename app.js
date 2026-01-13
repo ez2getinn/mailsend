@@ -29,7 +29,6 @@
     if (!el) return;
     el.value = value || "";
     el.setAttribute("readonly", "readonly");
-    // make it look "greyed out" even if readonly
     el.style.backgroundColor = "#f3f4f6";
     el.style.color = "#6b7280";
     el.style.cursor = "not-allowed";
@@ -124,7 +123,6 @@
   function normalizeRecipientUI() {
     if (!toList) return;
 
-    // If index.html has a single inline input, convert it into removable rows
     var inline = toList.querySelector(":scope > input.email-to");
     if (inline) {
       var val = (inline.value || "").trim();
@@ -133,7 +131,6 @@
       return;
     }
 
-    // If nothing exists, add one
     var any = toList.querySelector("input.email-to");
     if (!any) addRecipientField("");
   }
@@ -142,54 +139,132 @@
   // SUBJECT
   // ---------------------------
   function buildSubject() {
-    var a = (merchantDba && merchantDba.value ? merchantDba.value : "").trim();
-    var b = (siteCode && siteCode.value ? siteCode.value : "").trim();
-    var c = (mid && mid.value ? mid.value : "").trim();
-    var d = (serial && serial.value ? serial.value : "").trim();
+    var dba = (merchantDba && merchantDba.value ? merchantDba.value : "").trim();
+    var sc = (siteCode && siteCode.value ? siteCode.value : "").trim();
+    var m = (mid && mid.value ? mid.value : "").trim();
+    var sn = (serial && serial.value ? serial.value : "").trim();
 
-    var s = "Radisson Boarding — ";
-    s += a;
-    s += " | ";
-    s += b;
-    s += " | MID ";
-    s += c;
-    s += " | SN ";
-    s += d;
+    var parts = [];
+    if (dba) parts.push(dba);
+    if (sc) parts.push(sc);
+    if (m) parts.push("MID " + m);
+    if (sn) parts.push("SN " + sn);
 
-    return s.trim();
+    if (parts.length === 0) return "Radisson Boarding";
+
+    return "Radisson Boarding — " + parts.join(" | ");
   }
 
   // ---------------------------
-  // EMAIL BODY
+  // EMAIL BODY (MATCH SCREENSHOT)
   // ---------------------------
   function buildEmailBody() {
-    var fullName = ((contactFirst && contactFirst.value ? contactFirst.value : "") + " " +
-                    (contactLast && contactLast.value ? contactLast.value : "")).trim();
+    var first = (contactFirst && contactFirst.value ? contactFirst.value : "").trim();
+    var last = (contactLast && contactLast.value ? contactLast.value : "").trim();
+    var fullName = (first + " " + last).trim();
+
+    var dba = (merchantDba.value || "").trim();
+    var sc = (siteCode.value || "").trim();
+    var m = (mid.value || "").trim();
+    var sn = (serial.value || "").trim();
+    var addr = (business.value || "").trim();
+    var phone = (contactPhone.value || "").trim();
+    var pms = (pmsPos.value || "").trim();
 
     var html = "";
-    html += '<p><strong>This is to inform you that a conversion to Shift4 Gateway Only Services has been submitted.</strong></p>';
+
+    // Yellow message banner
+    html += '<div style="background:#FFF3CD;border:1px solid #FFEEBA;border-radius:8px;padding:12px 14px;font-weight:700;line-height:1.45;margin:0 0 12px 0;color:#664d03;">';
+    html += "This is to inform you that a conversion to Shift4 Gateway Only Services has been submitted for the property listed below.";
+    html += "</div>";
+
+    // Greeting
     html += "<p>Hi <strong>" + esc(fullName) + "</strong>,</p>";
 
-    html += "<p><strong>Merchant DBA Name:</strong> " + esc(merchantDba.value) + "</p>";
-    html += "<p><strong>Radisson Site Code:</strong> " + esc(siteCode.value) + "</p>";
-    html += "<p><strong>Shift4 E2E MID:</strong> " + esc(mid.value) + "</p>";
-    html += "<p><strong>Shift4 Serial Number:</strong> " + esc(serial.value) + "</p>";
-    html += "<p><strong>Business Address:</strong> " + esc(business.value) + "</p>";
-    html += "<p><strong>Contact Phone:</strong> " + esc(contactPhone.value) + "</p>";
-    html += "<p><strong>PMS / POS:</strong> " + esc(pmsPos.value) + "</p>";
+    // Bold label fields (same style like screenshot)
+    html += "<div style='line-height:1.65'>";
+    html += "<div><strong>Merchant DBA Name:</strong> " + esc(dba) + "</div>";
+    html += "<div><strong>Radisson Site Code:</strong> " + esc(sc) + "</div>";
+    html += "<div><strong>Shift4 E2E MID:</strong> " + esc(m) + "</div>";
+    html += "<div><strong>Shift4 Serial Number:</strong> " + esc(sn) + "</div>";
+    html += "<div><strong>Business Address:</strong> " + esc(addr) + "</div>";
+    html += "<div><strong>Contact First Name:</strong> " + esc(first) + "</div>";
+    html += "<div><strong>Contact Last Name:</strong> " + esc(last) + "</div>";
+    html += "<div><strong>Contact Phone:</strong> " + esc(phone) + "</div>";
+    html += "<div><strong>PMS/POS:</strong> " + esc(pms) + "</div>";
+    html += "</div>";
 
-    html += "<hr />";
-    html += "<p><strong>Connectivity:</strong> ETHERNET ONLY<br/>";
-    html += "<strong>Key Injection Required:</strong><br/>";
-    html += "– Processor Key (DUKPT Slot 0)<br/>";
-    html += "– Shift4 P2PE Key (DUKPT Slot 4)</p>";
+    html += "<br/>";
 
-    html += "<hr />";
-    html += '<p style="text-align:center;">';
-    html += '<img src="/assets/logo.png" width="100" alt="Shift4"/><br/>';
-    html += "+1-888-276-2108<br/>";
-    html += "©2025 Shift4. All rights reserved.";
-    html += "</p>";
+    // Paragraph before bullet list
+    html += "<p>Please be advised that you will need to purchase EMV devices through a PCI validated reseller. The key points are:</p>";
+
+    // Bullet list (warning style like screenshot)
+    html += '<ul style="list-style:none;padding-left:0;margin-left:0;">';
+
+    function bullet(title, text, extraHtml) {
+      var b = "";
+      b += '<li style="padding:10px 0;border-bottom:1px solid #e5e7eb;">';
+      b += '<span style="margin-right:8px;">⚠️</span>';
+      b += "<strong>" + esc(title) + ":</strong> ";
+      b += esc(text);
+      if (extraHtml) b += extraHtml;
+      b += "</li>";
+      return b;
+    }
+
+    html += bullet(
+      "Device Compatibility",
+      "Ingenico Lane 5000/7000 Pin Pad Devices support EMV chip & PIN, EMV chip, magstripe, and contactless NFC transactions.",
+      ""
+    );
+
+    html += bullet(
+      "Modern Payments",
+      "Supports mobile wallets, alternative payment methods, and QR code transactions.",
+      ""
+    );
+
+    html += bullet(
+      "Advanced Features",
+      "Includes P2PE, line item display, and BIN management.",
+      ""
+    );
+
+    // Connectivity pill like screenshot
+    var pill =
+      '<span style="display:inline-block;margin-left:8px;padding:2px 8px;border-radius:9999px;background:rgba(19,110,246,.10);color:#136EF6;font-weight:700;font-size:12px;vertical-align:middle;">ETHERNET ONLY</span>';
+
+    html += bullet(
+      "Connectivity",
+      "Devices connect to UTG via Ethernet only.",
+      pill
+    );
+
+    // Key injection with inner bullet list
+    html += '<li style="padding:10px 0;border-bottom:1px solid #e5e7eb;">';
+    html += '<span style="margin-right:8px;">⚠️</span>';
+    html += "<strong>Key Injection Required:</strong>";
+    html += '<ul style="list-style:disc;margin:6px 0 0 22px;padding:0;">';
+    html += "<li>Processor/Pin Encryption Key - Injected in DUKPT Slot 0</li>";
+    html += "<li>Shift4 P2PE Key - Injected in DUKPT Slot 4</li>";
+    html += "</ul>";
+    html += "</li>";
+
+    html += '<li style="padding:10px 0;">';
+    html += '<span style="margin-right:8px;">⚠️</span>';
+    html += "<strong>Vendor Responsibility:</strong> You will be responsible for all upfront costs, warranty, and support directly with your vendor.";
+    html += "</li>";
+
+    html += "</ul>";
+
+    // Footer logo + phone + copyright (matches screenshot center)
+    html += '<div style="text-align:center;margin-top:20px;">';
+    html += '<img src="/assets/logo.png" alt="Shift4" style="width:110px;height:auto;display:block;margin:0 auto 10px auto;"/>';
+    html += "<div style='font-weight:700;'>+1-888-276-2108</div>";
+    html += "<div>©2025 Shift4. All rights reserved.</div>";
+    html += "<div>Shift4 is a registered ISO/MSP of Citizens Bank, N.A, Providence, RI</div>";
+    html += "</div>";
 
     return html;
   }
@@ -228,15 +303,13 @@
 
   // ---------------------------
   // SEND ONE EMAIL (matches your backend)
-  // Backend requires: to + subject + (body OR htmlBody)
-  // We send BOTH to be safe.
+  // Backend requires: to + subject + body
+  // We send both body + htmlBody for safety.
   // ---------------------------
   function sendOneEmail(toAddr, subject, htmlBody) {
     var payload = {
       to: toAddr,
       subject: subject,
-
-      // support BOTH backend variants
       body: htmlBody,
       htmlBody: htmlBody
     };
@@ -256,20 +329,18 @@
   }
 
   // ---------------------------
-  // SUBMIT
-  // IMPORTANT:
-  // Your current backend only sends to ONE address.
-  // So we send:
-  //  1) to DEFAULT_NOTIFY_EMAIL (ticket)
-  //  2) then to EACH recipient (one-by-one)
-  // This guarantees everyone gets it WITHOUT needing backend BCC support.
+  // SUBMIT (PREVIEW + SEND)
   // ---------------------------
   function handleSubmit() {
     if (isSubmitting) return;
     if (!validate()) return;
 
     var subject = buildSubject();
-    var htmlBody = buildEmailBody();
+
+    // IMPORTANT:
+    // Body must match EXACTLY what user sees in editor
+    // so preview + email are identical
+    var htmlBody = bodyDiv && bodyDiv.innerHTML ? bodyDiv.innerHTML : buildEmailBody();
 
     var recipientsRaw = getRecipientEmails();
     var recipients = [];
@@ -279,19 +350,35 @@
       if (isValidEmail(recipientsRaw[i])) recipients.push(recipientsRaw[i]);
     }
 
-    var confirmHtml = "";
-    confirmHtml += "<div style='text-align:left;line-height:1.5'>";
-    confirmHtml += "<strong>Ticket To:</strong> " + esc(DEFAULT_NOTIFY_EMAIL) + "<br/>";
-    confirmHtml += "<strong>Recipients:</strong> " + esc(recipients.join(", ")) + "<br/><br/>";
-    confirmHtml += "<strong>Subject:</strong><br/>" + esc(subject);
-    confirmHtml += "</div>";
+    var previewHTML = "";
+    previewHTML += "<div style='text-align:left;display:grid;gap:14px;max-height:72vh;overflow:auto;padding-right:2px;'>";
+    previewHTML += "  <div style='border:1px solid #e5e7eb;border-radius:10px;overflow:hidden;background:#fff;'>";
+    previewHTML += "    <div style='background:#136EF6;color:#fff;font-weight:800;padding:10px 12px;'>EMAIL ROUTING</div>";
+    previewHTML += "    <div style='padding:12px;line-height:1.7;'>";
+    previewHTML += "      <div><strong>Ticket To:</strong> " + esc(DEFAULT_NOTIFY_EMAIL) + "</div>";
+    previewHTML += "      <div><strong>Recipients:</strong> " + esc(recipients.join(", ")) + "</div>";
+    previewHTML += "      <div style='margin-top:8px;'><strong>Subject:</strong> " + esc(subject) + "</div>";
+    previewHTML += "    </div>";
+    previewHTML += "  </div>";
+
+    previewHTML += "  <div style='border:1px solid #e5e7eb;border-radius:10px;overflow:hidden;background:#fff;'>";
+    previewHTML += "    <div style='background:#136EF6;color:#fff;font-weight:800;padding:10px 12px;'>EMAIL BODY PREVIEW</div>";
+    previewHTML += "    <div style='padding:14px;'>";
+    previewHTML += htmlBody;
+    previewHTML += "    </div>";
+    previewHTML += "  </div>";
+    previewHTML += "</div>";
 
     Swal.fire({
-      title: "Confirm Submission",
-      html: confirmHtml,
+      title: "Review Details",
+      html: previewHTML,
+      width: "100%",
+      grow: "fullscreen",
+      heightAuto: false,
       showCancelButton: true,
-      confirmButtonText: "Submit",
-      cancelButtonText: "Cancel"
+      confirmButtonText: "SUBMIT",
+      cancelButtonText: "CANCEL",
+      reverseButtons: true
     }).then(function (result) {
       if (!result.isConfirmed) return;
 
@@ -329,25 +416,27 @@
   // INIT
   // ---------------------------
   window.addEventListener("load", function () {
-    // show defaults
+    // show readonly top fields
     setReadonlyValue(userEmailInput, SIGNED_IN_EMAIL);
     setReadonlyValue(notifyEmailInput, DEFAULT_NOTIFY_EMAIL);
 
-    // recipients UI
+    // recipients
     normalizeRecipientUI();
 
-    // initial content
+    // initial values
     if (subjectInput) subjectInput.value = buildSubject();
     if (bodyDiv) bodyDiv.innerHTML = buildEmailBody();
 
-    // update subject/body live
+    // live update subject + body (keeps screenshot output)
     var liveInputs = [merchantDba, siteCode, mid, serial, business, contactFirst, contactLast, contactPhone, pmsPos];
     for (var i = 0; i < liveInputs.length; i++) {
       if (!liveInputs[i]) continue;
+
       liveInputs[i].addEventListener("input", function () {
         if (subjectInput) subjectInput.value = buildSubject();
         if (bodyDiv) bodyDiv.innerHTML = buildEmailBody();
       });
+
       liveInputs[i].addEventListener("change", function () {
         if (subjectInput) subjectInput.value = buildSubject();
         if (bodyDiv) bodyDiv.innerHTML = buildEmailBody();
