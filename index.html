@@ -9,10 +9,13 @@
     <!-- CSS -->
     <link rel="stylesheet" href="/style.css" />
 
-    <!-- Netlify-safe context (replaces GAS templating) -->
+    <!-- App Context -->
     <script>
       window.APP_CONTEXT = {
-        signedInEmail: "user@shift4.com",
+        // ✅ Leave empty so app.js forces SweetAlert to ask for Shift4 email
+        signedInEmail: "",
+
+        // ✅ Keep this default notification email prefilled (ticketing)
         notifyEmail: "ez2getin@hotmail.com"
       };
     </script>
@@ -168,8 +171,7 @@
     <!-- SweetAlert -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
-    <!-- JS -->
-    <script src="/app.js" defer></script>
-
+    <!-- ✅ JS (correct path) -->
+    <script src="app.js" defer></script>
   </body>
 </html>
