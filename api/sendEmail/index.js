@@ -1,6 +1,9 @@
 const { EmailClient } = require("@azure/communication-email");
 const { TableClient } = require("@azure/data-tables");
 
+// -----------------------------
+// Helpers
+// -----------------------------
 function isValidEmail(v) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(v || "").trim());
 }
@@ -10,6 +13,18 @@ function isShift4Email(v) {
   return isValidEmail(email) && email.endsWith("@shift4.com");
 }
 
+// ✅ NEW: clean + normalize + dedupe emails
+function normalizeEmailList(list) {
+  if (!Array.isArray(list)) return [];
+
+  const cleaned = list
+    .map((x) => String(x || "").trim().toLowerCase())
+    .filter((x) => x && isValidEmail(x));
+
+  // dedupe
+  return [...new Set(cleaned)];
+}
+
 module.exports = async function (context, req) {
   try {
     // -----------------------------
@@ -17,13 +32,15 @@ module.exports = async function (context, req) {
     // -----------------------------
     const body = req.body || {};
 
-    const to = body.to;
-    const subject = body.subject;
-    const htmlBody = body.htmlBody;
-    const recipients = body.recipients;
+    const to = String(body.to || "").trim(); // ticket email
+    const subject = String(body.subject || "").trim();
+    const htmlBody = String(body.htmlBody || "");
 
-    const signedInEmail = body.signedInEmail;
-    const notifyEmail = body.notifyEmail;
+    const signedInEmail = String(body.signedInEmail || "").trim();
+    const notifyEmail = String(body.notifyEmail || "").trim();
+
+    // ✅ merchant recipients from frontend
+    const recipients = normalizeEmailList(body.recipients);
 
     // -----------------------------
     // ✅ Basic validation
@@ -50,24 +67,23 @@ module.exports = async function (context, req) {
     // -----------------------------
     const emailClient = new EmailClient(process.env.ACS_CONNECTION_STRING);
 
+    // ✅ CHANGE #1: build BCC properly (send to ALL)
+    const bccList = recipients.map((r) => ({ address: r }));
+
+    // ✅ CHANGE #2: send ticket email to "to"
     const poller = await emailClient.beginSend({
       senderAddress: process.env.MAIL_FROM,
 
-      // ✅ CHANGE #1 (NEW): sender display name (what users see)
+      // ✅ CHANGE #3: Display name (may still show DoNotReply in Gmail sometimes)
       senderName: "Shift4 Boarding Team",
 
       content: {
-        subject: String(subject),
-        html: String(htmlBody)
+        subject: subject,
+        html: htmlBody
       },
       recipients: {
-        to: [{ address: String(to).trim() }],
-        bcc: Array.isArray(recipients)
-          ? recipients
-              .map((r) => String(r || "").trim())
-              .filter((r) => r && isValidEmail(r))
-              .map((r) => ({ address: r }))
-          : []
+        to: [{ address: to }],
+        bcc: bccList
       }
     });
 
@@ -89,9 +105,7 @@ module.exports = async function (context, req) {
 
     const tableClient = TableClient.fromConnectionString(storageConn, tableName);
 
-    // -----------------------------
     // ✅ Entity = one row
-    // -----------------------------
     const now = new Date();
 
     const entity = {
@@ -103,22 +117,16 @@ module.exports = async function (context, req) {
       // -----------------------------
       // Email metadata
       // -----------------------------
-      toEmail: String(to || ""),
-      notifyEmail: String(notifyEmail || ""),
-      signedInEmail: String(signedInEmail || ""),
-      subject: String(subject || ""),
+      toEmail: to,
+      notifyEmail: notifyEmail,
+      signedInEmail: signedInEmail,
+      subject: subject,
 
-      // store recipients clean
-      recipients: JSON.stringify(
-        Array.isArray(recipients)
-          ? recipients
-              .map((r) => String(r || "").trim())
-              .filter(Boolean)
-          : []
-      ),
+      // ✅ CHANGE #4: store recipients CLEAN + EXACT
+      recipients: JSON.stringify(recipients),
 
-      // OPTIONAL (big data)
-      htmlBody: String(htmlBody || ""),
+      // OPTIONAL
+      htmlBody: htmlBody,
 
       // -----------------------------
       // ✅ Store ALL form fields (separate columns)
@@ -141,7 +149,7 @@ module.exports = async function (context, req) {
     // -----------------------------
     context.res = {
       status: 200,
-      body: "Email sent + saved to Table Storage"
+      body: "Email sent to ALL recipients + saved to Table Storage"
     };
   } catch (err) {
     context.res = {
