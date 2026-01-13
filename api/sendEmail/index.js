@@ -13,25 +13,34 @@ function isShift4Email(v) {
   return isValidEmail(email) && email.endsWith("@shift4.com");
 }
 
-// ✅ NEW: clean + normalize + dedupe emails
-function normalizeEmailList(list) {
-  if (!Array.isArray(list)) return [];
+// ✅ Accept array OR string OR comma-separated
+function toEmailArray(value) {
+  if (Array.isArray(value)) return value;
+  if (typeof value === "string") {
+    return value
+      .split(",")
+      .map((x) => x.trim())
+      .filter(Boolean);
+  }
+  return [];
+}
 
-  const cleaned = list
+// ✅ Clean + dedupe + validate
+function normalizeEmailList(list) {
+  const raw = toEmailArray(list);
+  const cleaned = raw
     .map((x) => String(x || "").trim().toLowerCase())
     .filter((x) => x && isValidEmail(x));
-
-  // dedupe
   return [...new Set(cleaned)];
 }
 
 module.exports = async function (context, req) {
   try {
+    const body = req.body || {};
+
     // -----------------------------
     // Read request body
     // -----------------------------
-    const body = req.body || {};
-
     const to = String(body.to || "").trim(); // ticket email
     const subject = String(body.subject || "").trim();
     const htmlBody = String(body.htmlBody || "");
@@ -39,21 +48,18 @@ module.exports = async function (context, req) {
     const signedInEmail = String(body.signedInEmail || "").trim();
     const notifyEmail = String(body.notifyEmail || "").trim();
 
-    // ✅ merchant recipients from frontend
-    const recipients = normalizeEmailList(body.recipients);
+    // ✅ CHANGE #1: accept recipients from multiple keys safely
+    // (keeps backward compatibility if frontend changes)
+    const recipients = normalizeEmailList(body.recipients || body.bcc || []);
 
     // -----------------------------
-    // ✅ Basic validation
+    // Validation
     // -----------------------------
     if (!to || !subject || !htmlBody) {
-      context.res = {
-        status: 400,
-        body: "Missing to / subject / htmlBody"
-      };
+      context.res = { status: 400, body: "Missing to / subject / htmlBody" };
       return;
     }
 
-    // ✅ Corporate validation (Shift4 email required)
     if (!signedInEmail || !isShift4Email(signedInEmail)) {
       context.res = {
         status: 400,
@@ -67,20 +73,12 @@ module.exports = async function (context, req) {
     // -----------------------------
     const emailClient = new EmailClient(process.env.ACS_CONNECTION_STRING);
 
-    // ✅ CHANGE #1: build BCC properly (send to ALL)
+    // ✅ CHANGE #2: build bcc list from normalized recipients (ALL will be included)
     const bccList = recipients.map((r) => ({ address: r }));
 
-    // ✅ CHANGE #2: send ticket email to "to"
     const poller = await emailClient.beginSend({
       senderAddress: process.env.MAIL_FROM,
-
-      // ✅ CHANGE #3: Display name (may still show DoNotReply in Gmail sometimes)
-      senderName: "Shift4 Boarding Team",
-
-      content: {
-        subject: subject,
-        html: htmlBody
-      },
+      content: { subject, html: htmlBody },
       recipients: {
         to: [{ address: to }],
         bcc: bccList
@@ -96,41 +94,44 @@ module.exports = async function (context, req) {
     const tableName = process.env.TABLE_NAME || "MerchantSubmissions";
 
     if (!storageConn) {
-      context.res = {
-        status: 500,
-        body: "Missing STORAGE_CONNECTION_STRING env variable"
-      };
+      context.res = { status: 500, body: "Missing STORAGE_CONNECTION_STRING env variable" };
       return;
     }
 
     const tableClient = TableClient.fromConnectionString(storageConn, tableName);
 
-    // ✅ Entity = one row
+    // ✅ CHANGE #3: ensure table exists (prevents TableNotFound)
+    try {
+      await tableClient.createTable();
+    } catch (e) {
+      // ignore if already exists
+    }
+
     const now = new Date();
+
+    // ✅ CHANGE #4: DO NOT store full htmlBody (can break Table Storage limits)
+    // Store only length + small preview so save never fails.
+    const htmlPreview = htmlBody.slice(0, 1500);
 
     const entity = {
       partitionKey: "MerchantForm",
       rowKey: `${now.getTime()}-${Math.random().toString(36).slice(2)}`,
-
       createdAt: now.toISOString(),
 
-      // -----------------------------
       // Email metadata
-      // -----------------------------
       toEmail: to,
       notifyEmail: notifyEmail,
       signedInEmail: signedInEmail,
       subject: subject,
 
-      // ✅ CHANGE #4: store recipients CLEAN + EXACT
+      // Recipients saved clean
       recipients: JSON.stringify(recipients),
 
-      // OPTIONAL
-      htmlBody: htmlBody,
+      // ✅ safe body storage
+      htmlBodyLength: htmlBody.length,
+      htmlBodyPreview: htmlPreview,
 
-      // -----------------------------
-      // ✅ Store ALL form fields (separate columns)
-      // -----------------------------
+      // Form fields
       merchantDba: String(body.merchantDba || ""),
       siteCode: String(body.siteCode || ""),
       mid: String(body.mid || ""),
@@ -144,12 +145,9 @@ module.exports = async function (context, req) {
 
     await tableClient.createEntity(entity);
 
-    // -----------------------------
-    // ✅ Response
-    // -----------------------------
     context.res = {
       status: 200,
-      body: "Email sent to ALL recipients + saved to Table Storage"
+      body: "Email sent to all recipients + saved to Table Storage"
     };
   } catch (err) {
     context.res = {
