@@ -259,12 +259,17 @@
     html += "</ul>";
 
     // Footer logo + phone + copyright (matches screenshot center)
+    // ✅ Public logo URL (must be full https URL for email clients)
+    var LOGO_URL = "https://jolly-hill-02879b60f.2.azurestaticapps.net/assets/logo.png";
+    
+    // Footer logo + phone + copyright (matches screenshot center)
     html += '<div style="text-align:center;margin-top:20px;">';
-    html += '<img src="/assets/logo.png" alt="Shift4" style="width:110px;height:auto;display:block;margin:0 auto 10px auto;"/>';
+    html += '<img src="' + LOGO_URL + '" alt="Shift4" style="width:110px;height:auto;display:block;margin:0 auto 10px auto;"/>';
     html += "<div style='font-weight:700;'>+1-888-276-2108</div>";
     html += "<div>©2025 Shift4. All rights reserved.</div>";
     html += "<div>Shift4 is a registered ISO/MSP of Citizens Bank, N.A, Providence, RI</div>";
     html += "</div>";
+
 
     return html;
   }
