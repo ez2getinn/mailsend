@@ -52,6 +52,10 @@ module.exports = async function (context, req) {
 
     const poller = await emailClient.beginSend({
       senderAddress: process.env.MAIL_FROM,
+
+      // ✅ CHANGE #1 (NEW): sender display name (what users see)
+      senderName: "Shift4 Boarding Team",
+
       content: {
         subject: String(subject),
         html: String(htmlBody)
