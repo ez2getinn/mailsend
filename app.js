@@ -93,16 +93,23 @@
   // RECIPIENTS (Bcc List)
   // ---------------------------
   function getRecipientEmails() {
-    var inputs = toList.querySelectorAll("input.email-to");
-    var emails = [];
+  var inputs = toList.querySelectorAll("input.email-to");
+  var emails = [];
 
-    for (var i = 0; i < inputs.length; i++) {
-      var v = (inputs[i].value || "").trim();
-      if (v) emails.push(v);
-    }
-
-    return emails;
+  for (var i = 0; i < inputs.length; i++) {
+    var v = (inputs[i].value || "").trim();
+    if (v) emails.push(v.toLowerCase());
   }
+
+  // ✅ remove duplicates
+  var unique = [];
+  for (var j = 0; j < emails.length; j++) {
+    if (unique.indexOf(emails[j]) === -1) unique.push(emails[j]);
+  }
+
+  return unique;
+}
+
 
   function addRecipientField(prefill) {
     var row = document.createElement("div");
