@@ -1,6 +1,15 @@
 const { EmailClient } = require("@azure/communication-email");
 const { TableClient } = require("@azure/data-tables");
 
+function isValidEmail(v) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(v || "").trim());
+}
+
+function isShift4Email(v) {
+  const email = String(v || "").trim().toLowerCase();
+  return isValidEmail(email) && email.endsWith("@shift4.com");
+}
+
 module.exports = async function (context, req) {
   try {
     // -----------------------------
@@ -13,6 +22,9 @@ module.exports = async function (context, req) {
     const htmlBody = body.htmlBody;
     const recipients = body.recipients;
 
+    const signedInEmail = body.signedInEmail;
+    const notifyEmail = body.notifyEmail;
+
     // -----------------------------
     // ✅ Basic validation
     // -----------------------------
@@ -20,6 +32,15 @@ module.exports = async function (context, req) {
       context.res = {
         status: 400,
         body: "Missing to / subject / htmlBody"
+      };
+      return;
+    }
+
+    // ✅ Corporate validation (Shift4 email required)
+    if (!signedInEmail || !isShift4Email(signedInEmail)) {
+      context.res = {
+        status: 400,
+        body: "Missing or invalid signedInEmail (must be @shift4.com)"
       };
       return;
     }
@@ -32,13 +53,16 @@ module.exports = async function (context, req) {
     const poller = await emailClient.beginSend({
       senderAddress: process.env.MAIL_FROM,
       content: {
-        subject: subject,
-        html: htmlBody
+        subject: String(subject),
+        html: String(htmlBody)
       },
       recipients: {
-        to: [{ address: to }],
+        to: [{ address: String(to).trim() }],
         bcc: Array.isArray(recipients)
-          ? recipients.map((r) => ({ address: r }))
+          ? recipients
+              .map((r) => String(r || "").trim())
+              .filter((r) => r && isValidEmail(r))
+              .map((r) => ({ address: r }))
           : []
       }
     });
@@ -76,22 +100,25 @@ module.exports = async function (context, req) {
       // Email metadata
       // -----------------------------
       toEmail: String(to || ""),
+      notifyEmail: String(notifyEmail || ""),
+      signedInEmail: String(signedInEmail || ""),
       subject: String(subject || ""),
-      recipients: JSON.stringify(Array.isArray(recipients) ? recipients : []),
 
-      // -----------------------------
+      // store recipients clean
+      recipients: JSON.stringify(
+        Array.isArray(recipients)
+          ? recipients
+              .map((r) => String(r || "").trim())
+              .filter(Boolean)
+          : []
+      ),
+
       // OPTIONAL (big data)
-      // if you want to store htmlBody keep it,
-      // otherwise remove it to reduce storage size
-      // -----------------------------
       htmlBody: String(htmlBody || ""),
 
       // -----------------------------
       // ✅ Store ALL form fields (separate columns)
       // -----------------------------
-      signedInEmail: String(body.signedInEmail || ""),
-      notifyEmail: String(body.notifyEmail || ""),
-
       merchantDba: String(body.merchantDba || ""),
       siteCode: String(body.siteCode || ""),
       mid: String(body.mid || ""),
