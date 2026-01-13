@@ -14,31 +14,19 @@ module.exports = async function (context, req) {
 
     const client = new EmailClient(process.env.ACS_CONNECTION_STRING);
 
-    // ✅ Build recipients list
-    const toList = [{ address: String(to).trim() }];
-
-    // ✅ Optional BCC support (send copy to merchants too)
-    const bccList = Array.isArray(bcc)
-      ? bcc
-          .map((x) => String(x || "").trim())
-          .filter(Boolean)
-          .map((email) => ({ address: email }))
-      : [];
-
     const poller = await client.beginSend({
       senderAddress: process.env.MAIL_FROM,
 
-      // ✅ THIS makes it show like "noreply@shift4.com"
-      senderName: "noreply@shift4.com",
+      // ✅ THIS sets the name you see in Outlook/Gmail
+      senderDisplayName: "noreply@shift4.com",
 
       content: {
-        subject: String(subject),
-        html: String(htmlBody)
+        subject,
+        html: htmlBody
       },
-
       recipients: {
-        to: toList,
-        bcc: bccList
+        to: [{ address: to }],
+        bcc: Array.isArray(bcc) ? bcc.map((x) => ({ address: x })) : []
       }
     });
 
