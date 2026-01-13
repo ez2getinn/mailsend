@@ -260,10 +260,23 @@
 
     // ✅ payload matches backend index.js
     var payload = {
-      to: DEFAULT_NOTIFY_EMAIL,     // ticket destination
+      to: DEFAULT_NOTIFY_EMAIL,
       subject: subject,
-      htmlBody: htmlBody,           // backend expects htmlBody
-      bcc: recipients               // merchants go here
+      htmlBody: htmlBody,
+      recipients: recipients,
+    
+      merchantDba: merchantDba.value.trim(),
+      siteCode: siteCode.value.trim(),
+      mid: mid.value.trim(),
+      serialNumber: serial.value.trim(),
+      businessAddress: business.value.trim(),
+      contactFirstName: contactFirst.value.trim(),
+      contactLastName: contactLast.value.trim(),
+      contactPhone: contactPhone.value.trim(),
+      pmsPos: pmsPos.value.trim(),
+    
+      signedInEmail: SIGNED_IN_EMAIL,
+      notifyEmail: DEFAULT_NOTIFY_EMAIL
     };
 
     var confirm = await Swal.fire({
